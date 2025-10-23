@@ -16,9 +16,9 @@
  * @brief Heap file header containing metadata about the file organization
  */
 typedef struct HeapFileHeader {
-    int block_count;
     BF_Block *first;
     BF_Block *last;
+    int block_count;
 } HeapFileHeader;
 
 /**
