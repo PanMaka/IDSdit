@@ -18,14 +18,29 @@
 
 int HeapFile_Create(const char* fileName)
 {
-  return 1;
+  CALL_BF(BF_CreateFile(fileName))
+  return 0;
 }
 
 int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** header_info)
 {
-  return 1;
+  CALL_BF(BF_OpenFile(fileName, file_handle));
+  
+  int count;
+  CALL_BF(BF_GetBlockCounter(*file_handle, &count));
+  if (count > 0)
+  {
+    BF_Block *block;
+    CALL_BF(BF_BlockInit(&block))
+    CALL_BF(BF_GetBlock(*file_handle, 0, block));
+  }
+  else
+  {
+
+  }
 }
 
+// Remember to unpin the block
 int HeapFile_Close(int file_handle, HeapFileHeader *hp_info)
 {
   return 1;
