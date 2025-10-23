@@ -31,11 +31,12 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
   if (count > 0)
   {
     BF_Block *block;
+    void *data;
     CALL_BF(BF_BlockInit(&block))
     CALL_BF(BF_GetBlock(*file_handle, 0, block));
-  }
-  else
-  {
+    data = block;
+    *header_info = data;
+  }else{
 
   }
 }
