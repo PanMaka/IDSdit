@@ -39,17 +39,16 @@ int HeapFile_Create(const char* fileName){
   //Close file
   BF_Block_SetDirty(block);
   CALL_BF(BF_UnpinBlock(block));
-  CALL_BF(BF_CloseFile(handler));
-
   
-
+  BF_Block_Destroy(&block);
+  CALL_BF(BF_CloseFile(handler));
 
 
   return 0;
 }
 
-int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** header_info)
-{
+int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** header_info){
+
   CALL_BF(BF_OpenFile(fileName, file_handle));
   
   BF_Block *block;
@@ -64,14 +63,24 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
   return 0;
 }
 
-// Remember to unpin the header block
-int HeapFile_Close(int file_handle, HeapFileHeader *hp_info)
-{
-  return 1;
+// TODO: Check if the header needs to be re-inserted
+int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
+
+  void *header = hp_info;
+  BF_Block *header_block = header;
+
+  BF_Block_SetDirty(header_block);
+  CALL_BF(BF_UnpinBlock(header_block));
+
+  // ? Maybe issue here
+  BF_Block_Destroy(&header_block);
+  CALL_BF(BF_CloseFile(file_handle));
+
+  return 0;
 }
 
-int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record)
-{
+int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
+  
   return 1;
 }
 
