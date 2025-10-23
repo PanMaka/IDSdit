@@ -32,12 +32,13 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
   {
     BF_Block *block;
     void *data;
-    CALL_BF(BF_BlockInit(&block))
+    BF_Block_Init(&block);
     CALL_BF(BF_GetBlock(*file_handle, 0, block));
     data = block;
     *header_info = data;
+    printf("%p", data);
   }else{
-
+    
   }
 }
 
