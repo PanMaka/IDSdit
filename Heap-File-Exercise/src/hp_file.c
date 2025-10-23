@@ -16,9 +16,35 @@
     }                         \
   }
 
-int HeapFile_Create(const char* fileName)
-{
-  CALL_BF(BF_CreateFile(fileName))
+int HeapFile_Create(const char* fileName){
+
+  CALL_BF(BF_CreateFile(fileName));
+
+  //Create Header Block
+  int handler;
+  BF_Block *block;
+  void *data;
+  
+  BF_Block_Init(&block);
+
+  CALL_BF(BF_OpenFile(fileName, &handler));
+  CALL_BF(BF_AllocateBlock(handler, block));
+
+  data = BF_Block_GetData(block);
+  HeapFileHeader *heap_header = data;
+  heap_header->block_count = 0;
+  heap_header->first = NULL;
+  heap_header->last = NULL;
+
+  //Close file
+  BF_Block_SetDirty(block);
+  CALL_BF(BF_UnpinBlock(block));
+  CALL_BF(BF_CloseFile(handler));
+
+  
+
+
+
   return 0;
 }
 
@@ -26,22 +52,19 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
 {
   CALL_BF(BF_OpenFile(fileName, file_handle));
   
-  int count;
-  CALL_BF(BF_GetBlockCounter(*file_handle, &count));
-  if (count > 0)
-  {
-    BF_Block *block;
-    void *data;
-    CALL_BF(BF_BlockInit(&block))
-    CALL_BF(BF_GetBlock(*file_handle, 0, block));
-    data = block;
-    *header_info = data;
-  }else{
+  BF_Block *block;
+  BF_Block_Init(&block);
+  
+  void *data;
 
-  }
+  CALL_BF(BF_GetBlock(*file_handle, 0, block));
+  data = block;
+  *header_info = data;
+
+  return 0;
 }
 
-// Remember to unpin the block
+// Remember to unpin the header block
 int HeapFile_Close(int file_handle, HeapFileHeader *hp_info)
 {
   return 1;
