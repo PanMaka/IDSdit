@@ -96,6 +96,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
     data = BF_Block_GetData(Block);
     Record *rec = data;
 
+    //! seg fault
     // rec[0] = record;
     // rec[1] = record;
     BF_Block_SetDirty(Block);
@@ -106,6 +107,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
   } else {
     Record *rec = data;
 
+    //! seg fault
     // rec[0] = record;
     // rec[1] = record;
     BF_Block_SetDirty(Block);
