@@ -79,9 +79,39 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
   return 0;
 }
 
+/** 
+* TODO: Find a way (if needed) to check if the block is empty or not
+* TODO: Fill in the Record struct and figure out how to properly insert data into rec
+* TODO: Uncommenting rec[0] = record and rec[1] = record causes seg fault so be careful
+* ? δημιουργώντας αυτόματα ένα νέο μπλοκ *εάν το τρέχον είναι πλήρες* (Εργασία1.pdf)
+**/
 int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
-  
-  return 1;
+    
+  void* header = hp_info;
+  BF_Block* Block = header;
+
+  void* data = BF_Block_GetData(Block);
+  if (data != NULL) {
+    CALL_BF(BF_AllocateBlock(file_handle, Block));
+    data = BF_Block_GetData(Block);
+    Record *rec = data;
+
+    // rec[0] = record;
+    // rec[1] = record;
+    BF_Block_SetDirty(Block);
+    CALL_BF(BF_UnpinBlock(Block));
+
+    header = Block;
+    hp_info = header;
+  } else {
+    Record *rec = data;
+
+    // rec[0] = record;
+    // rec[1] = record;
+    BF_Block_SetDirty(Block);
+    CALL_BF(BF_UnpinBlock(Block));
+  }
+  return 0;
 }
 
 
