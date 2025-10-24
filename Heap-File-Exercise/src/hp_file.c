@@ -82,7 +82,6 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 /** 
 * TODO: Find a way (if needed) to check if the block is empty or not
 * TODO: Fill in the Record struct and figure out how to properly insert data into rec
-* TODO: Uncommenting rec[0] = record and rec[1] = record causes seg fault so be careful
 * ? δημιουργώντας αυτόματα ένα νέο μπλοκ *εάν το τρέχον είναι πλήρες* (Εργασία1.pdf)
 **/
 int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
