@@ -81,7 +81,10 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 
 int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
   
-  return 1;
+  
+
+
+  return 0;
 }
 
 
