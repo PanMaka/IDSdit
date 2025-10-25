@@ -16,6 +16,8 @@
     }                         \
   }
 
+int filesOpened = 0;
+
 int HeapFile_Create(const char* fileName){
 
   CALL_BF(BF_CreateFile(fileName));
@@ -49,6 +51,10 @@ int HeapFile_Create(const char* fileName){
 
 int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** header_info){
 
+  if (filesOpened++ > BF_MAX_OPEN_FILES) {
+    return BF_OPEN_FILES_LIMIT_ERROR;
+  }
+
   CALL_BF(BF_OpenFile(fileName, file_handle));
   
   BF_Block *block;
@@ -65,6 +71,8 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
 
 // TODO: Check if the header needs to be re-inserted
 int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
+
+  filesOpened--;
 
   void *header = hp_info;
   BF_Block *header_block = header;
@@ -85,21 +93,24 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 * ? δημιουργώντας αυτόματα ένα νέο μπλοκ *εάν το τρέχον είναι πλήρες* (Εργασία1.pdf)
 **/
 int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
-    
-
+  
   if (hp_info->block_count >= BF_BUFFER_SIZE) {
     return BF_FULL_MEMORY_ERROR;
   }
 
-  void* header = hp_info;
-  BF_Block* Block = header;
+  BF_Block* Block;
+  BF_Block_Init(&Block);
 
+  
+  CALL_BF(BF_GetBlock(file_handle, hp_info->block_count, Block));
   void* data = BF_Block_GetData(Block);
-  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data) || hp_info->block_count == 1) {
+
+  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data)) {
+
     CALL_BF(BF_AllocateBlock(file_handle, Block));
     data = BF_Block_GetData(Block);
-    const Record *rec = data;
 
+    const Record *rec = data;
     rec = &record;
 
     BF_Block_SetDirty(Block);
@@ -111,9 +122,10 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
 
     hp_info->last = Block;
     hp_info->block_count++;
-  } else {
-    const Record *rec = data;
 
+  } else {
+
+    const Record *rec = data;
     rec = &record;
 
     BF_Block_SetDirty(Block);
