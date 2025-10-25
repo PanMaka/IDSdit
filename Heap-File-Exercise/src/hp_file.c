@@ -86,6 +86,10 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
 
 int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 
+  // If there is no open file to close return 0
+  if (filesOpened == 0)
+    return 0;
+
   // Subtracting the amount of files opened
   filesOpened--;
 
