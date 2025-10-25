@@ -32,7 +32,7 @@ int HeapFile_Create(const char* fileName){
 
   data = BF_Block_GetData(block);
   HeapFileHeader *heap_header = data;
-  heap_header->block_count = 0;
+  heap_header->block_count = 1;
   heap_header->first = NULL;
   heap_header->last = NULL;
 
@@ -74,6 +74,7 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 
   // ? Maybe issue here
   BF_Block_Destroy(&header_block);
+
   CALL_BF(BF_CloseFile(file_handle));
 
   return 0;
@@ -85,13 +86,16 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 **/
 int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
     
+
+  if (hp_info->block_count >= BF_BUFFER_SIZE) {
+    return BF_FULL_MEMORY_ERROR;
+  }
+
   void* header = hp_info;
   BF_Block* Block = header;
 
-  
-
   void* data = BF_Block_GetData(Block);
-  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data)) {
+  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data) || hp_info->block_count == 1) {
     CALL_BF(BF_AllocateBlock(file_handle, Block));
     data = BF_Block_GetData(Block);
     const Record *rec = data;
@@ -101,8 +105,12 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
     BF_Block_SetDirty(Block);
     CALL_BF(BF_UnpinBlock(Block));
 
-    header = Block;
-    hp_info = header;
+    if (hp_info->block_count == 1) {
+      hp_info->first = Block;
+    }
+
+    hp_info->last = Block;
+    hp_info->block_count++;
   } else {
     const Record *rec = data;
 
@@ -111,6 +119,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
     BF_Block_SetDirty(Block);
     CALL_BF(BF_UnpinBlock(Block));
   }
+
   return 0;
 }
 
