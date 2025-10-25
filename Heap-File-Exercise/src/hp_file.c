@@ -16,6 +16,8 @@
     }                         \
   }
 
+// TODO: Find why block_count always stay at 0
+
 int filesOpened = 0;
 
 int HeapFile_Create(const char* fileName){
@@ -97,6 +99,7 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
   
   CALL_BF(BF_CloseFile(file_handle));
   free(hp_info);
+
   return 0;
 }
 
@@ -113,7 +116,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
   CALL_BF(BF_GetBlock(file_handle, hp_info->block_count, Block));
   void* data = BF_Block_GetData(Block);
 
-  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data)) {
+  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data) || hp_info->block_count) {
 
     CALL_BF(BF_AllocateBlock(file_handle, Block));
     data = BF_Block_GetData(Block);
@@ -134,7 +137,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
     BF_Block_SetDirty(Block);
     CALL_BF(BF_UnpinBlock(Block));
   }
-
+  printf("%d", hp_info->block_count);
   BF_Block_Destroy(&Block);
 
   return 0;
