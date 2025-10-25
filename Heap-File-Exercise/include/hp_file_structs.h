@@ -16,8 +16,6 @@
  * @brief Heap file header containing metadata about the file organization
  */
 typedef struct HeapFileHeader {
-    BF_Block *first;
-    BF_Block *last;
     int block_count;
 } HeapFileHeader;
 
@@ -25,6 +23,10 @@ typedef struct HeapFileHeader {
  * @brief Iterator for scanning through records in a heap file
  */
 typedef struct HeapFileIterator{
+    int idToSearch;
+    int blockIndex;
+    int idIndex;
 } HeapFileIterator;
+
 
 #endif /* HP_FILE_STRUCTS_H */
