@@ -88,8 +88,10 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
   void* header = hp_info;
   BF_Block* Block = header;
 
+  
+
   void* data = BF_Block_GetData(Block);
-  if (data != NULL) {
+  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data)) {
     CALL_BF(BF_AllocateBlock(file_handle, Block));
     data = BF_Block_GetData(Block);
     const Record *rec = data;
