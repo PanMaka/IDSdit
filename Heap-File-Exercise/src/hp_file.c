@@ -137,7 +137,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
     BF_Block_SetDirty(Block);
     CALL_BF(BF_UnpinBlock(Block));
   }
-  printf("%d", hp_info->block_count);
+  
   BF_Block_Destroy(&Block);
 
   return 0;
