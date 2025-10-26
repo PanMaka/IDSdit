@@ -128,7 +128,7 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
   BF_Block* Block;
   BF_Block_Init(&Block);
 
-  printf("%d\n", hp_info->block_count++);
+  //printf("%d\n", hp_info->block_count++);
   CALL_BF(BF_GetBlock(file_handle, hp_info->block_count, Block));
   void* data = BF_Block_GetData(Block);
 
@@ -171,6 +171,7 @@ HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header
   void* data;
   int foundId = 0;
   Record* rec;
+  out.file_handle = file_handle;
   for (int i = 1; i < BF_BUFFER_SIZE; i ++) {
     BF_GetBlock(file_handle, i, blockIterate);
     data = BF_Block_GetData(blockIterate);
@@ -196,8 +197,43 @@ HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header
 
 
 int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
+  BF_Block* blockIterate;
+  BF_Block_Init(&blockIterate);
 
-    * record=NULL;
+  Record* rec;
+  void* data;
+  int foundId = 0;
+
+  for(int i = heap_iterator->blockIndex; i < BF_BUFFER_SIZE; i++){
+    BF_GetBlock(heap_iterator->file_handle, i, blockIterate);
+    data = BF_Block_GetData(blockIterate);
+    rec = data;
+
+    // *Μάλλον όχι απτό 0 αλλά από την θέση του record στο block.
+    // !Πώς είμαι σίγουρος ότι δεν θα επιστρέψει το ίδιο το block
+    // TODO τσέκαρε ότι σίγουρα λειτουργεί
+    for(int j = 0 ; j < sizeof(rec)/sizeof(rec[0]); j++){
+      if (rec[j].id == (**record).id) {
+        foundId = 1;
+        break;
+      } 
+    }
+
+    if (foundId) {
+      heap_iterator->blockIndex = i;
+      break;
+    }
+
+  }
+    
+
+
+  BF_Block_Destroy(&blockIterate);
+
+  * record=NULL;
+  if(foundId)
     return 1;
+  else
+    return 0;
 }
 

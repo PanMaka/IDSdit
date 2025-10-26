@@ -25,7 +25,8 @@ typedef struct HeapFileHeader {
 typedef struct HeapFileIterator{
     int idToSearch;
     int blockIndex;
-    int idIndex;
+    int file_handle;
+    
 } HeapFileIterator;
 
 
