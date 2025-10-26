@@ -16,9 +16,6 @@
     }                         \
   }
 
-// TODO: Find why the block number doesn't exist in the file.
-// ! Huge leaks at CreateIterator
-
 // Count for the open files
 int filesOpened = 0;
 
@@ -42,7 +39,9 @@ int HeapFile_Create(const char* fileName){
 
   // Assigning the data into the header
   HeapFileHeader *heap_header = data;
-  heap_header->block_count = 1;
+  heap_header->blockCount = 1;
+  heap_header->recordCount = 0;
+  heap_header->block = block;
 
   //Dirty, unpin and destroy the block, then close file
   BF_Block_SetDirty(block);
@@ -75,10 +74,10 @@ int HeapFile_Open(const char *fileName, int *file_handle, HeapFileHeader** heade
   *   And add to it all the attributes of the dummy header and then destroy the node
   */
   CALL_BF(BF_GetBlock(*file_handle, 0, block));
-  data = block;
+  data = BF_Block_GetData(block);
   dummy = data;
-  *header_info = malloc(sizeof(HeapFileHeader));
-  (*header_info)->block_count = dummy->block_count;
+  *header_info = (HeapFileHeader*)malloc(sizeof(HeapFileHeader));
+  (*header_info)->blockCount = dummy->blockCount;
   BF_Block_Destroy(&block);
   
   return 1;
@@ -104,14 +103,14 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
   // Fill the dummy header with the data from the first block and the attributes of the actual header
   void* data = BF_Block_GetData(header_block);
   dummy = data;
-  dummy->block_count = hp_info->block_count;
+  dummy->blockCount = hp_info->blockCount;
 
   // Dirty and unpin the header block
   BF_Block_SetDirty(header_block);
   CALL_BF(BF_UnpinBlock(header_block));
   
   
-  // Destroy the block because we don't need it and the close the file and free the header to avoid leaks
+  // Destroy the block because we don't need it and then close the file and free the header to avoid leaks
   BF_Block_Destroy(&header_block);
   CALL_BF(BF_CloseFile(file_handle));
   free(hp_info);
@@ -120,42 +119,40 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
 }
 
 int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record record){
+
+  BF_Block_Init(&hp_info->block);
+
+  CALL_BF(BF_GetBlock(file_handle, hp_info->blockCount - 1, hp_info->block));
+  void* data = BF_Block_GetData(hp_info->block);
+  Record *rec;
+  printf("%d\n", hp_info->blockCount);
   
-  if (hp_info->block_count >= BF_BUFFER_SIZE) {
-    return BF_FULL_MEMORY_ERROR;
-  }
+  if (sizeof(record) >= BF_BLOCK_SIZE - sizeof(data) - (sizeof(Record) *  hp_info->recordCount)  || hp_info->blockCount == 1) {
 
-  BF_Block* Block;
-  BF_Block_Init(&Block);
+    hp_info->recordCount = 1;
+    CALL_BF(BF_AllocateBlock(file_handle, hp_info->block));
 
-  //printf("%d\n", hp_info->block_count++);
-  CALL_BF(BF_GetBlock(file_handle, hp_info->block_count, Block));
-  void* data = BF_Block_GetData(Block);
+    data = BF_Block_GetData(hp_info->block);
+    rec = data;
+    rec[hp_info->recordCount - 1] = record;
 
-  if (sizeof(record) > BF_BLOCK_SIZE - sizeof(data) || hp_info->block_count) {
+    BF_Block_SetDirty(hp_info->block);
+    CALL_BF(BF_UnpinBlock(hp_info->block));
 
-    CALL_BF(BF_AllocateBlock(file_handle, Block));
-    data = BF_Block_GetData(Block);
-
-    const Record *rec = data;
-    rec = &record;
-
-    BF_Block_SetDirty(Block);
-    CALL_BF(BF_UnpinBlock(Block));
-
-    hp_info->block_count++;
+    hp_info->blockCount++;
 
   } else {
 
-    const Record *rec = data;
-    rec = &record;
+    rec = data;
+    rec[hp_info->recordCount - 1] = record;
 
-    BF_Block_SetDirty(Block);
-    CALL_BF(BF_UnpinBlock(Block));
+    BF_Block_SetDirty(hp_info->block);
+    CALL_BF(BF_UnpinBlock(hp_info->block));
+    
+    hp_info->recordCount++;
   }
 
-  
-  BF_Block_Destroy(&Block);
+  BF_Block_Destroy(&hp_info->block);
 
   return 1;
 }
@@ -189,6 +186,8 @@ HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header
       break;
     }
   }
+  BF_Block_SetDirty(blockIterate);
+  BF_UnpinBlock(blockIterate);
 
   BF_Block_Destroy(&blockIterate);
 
@@ -197,43 +196,48 @@ HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header
 
 
 int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
-  BF_Block* blockIterate;
-  BF_Block_Init(&blockIterate);
+  // BF_Block* blockIterate;
+  // BF_Block_Init(&blockIterate);
 
-  Record* rec;
-  void* data;
-  int foundId = 0;
+  // Record* rec;
+  // void* data;
+  // int foundId = 0;
+  // * record = malloc(sizeof(Record));
 
-  for(int i = heap_iterator->blockIndex; i < BF_BUFFER_SIZE; i++){
-    BF_GetBlock(heap_iterator->file_handle, i, blockIterate);
-    data = BF_Block_GetData(blockIterate);
-    rec = data;
+  // for(int i = heap_iterator->blockIndex; i < BF_BUFFER_SIZE; ++i){
 
-    // *Μάλλον όχι απτό 0 αλλά από την θέση του record στο block.
-    // !Πώς είμαι σίγουρος ότι δεν θα επιστρέψει το ίδιο το block
-    // TODO τσέκαρε ότι σίγουρα λειτουργεί
-    for(int j = 0 ; j < sizeof(rec)/sizeof(rec[0]); j++){
-      if (rec[j].id == (**record).id) {
-        foundId = 1;
-        break;
-      } 
-    }
+  //   if (i == heap_iterator->blockIndex) continue;
 
-    if (foundId) {
-      heap_iterator->blockIndex = i;
-      break;
-    }
+  //   BF_GetBlock(heap_iterator->file_handle, i, blockIterate);
+  //   data = BF_Block_GetData(blockIterate);
+  //   rec = data;
 
-  }
-    
+  //   // *Μάλλον όχι απτό 0 αλλά από την θέση του record στο block.
+  //   // !Πώς είμαι σίγουρος ότι δεν θα επιστρέψει το ίδιο το block (Skip one loop?)
+  //   // TODO τσέκαρε ότι σίγουρα λειτουργεί
+  //   // ! ΓΡΑΦΕ ΑΓΓΊΚΑ ΡΕ ΓΥΦΤΕ
+  //   for(int j = 0 ; j < sizeof(rec)/sizeof(rec[0]); j++){
+  //     if (rec[j].id == (**record).id) {
+  //       foundId = 1;
+  //       break;
+  //     } 
+  //   }
 
+  //   if (foundId) {
+  //     heap_iterator->blockIndex = i;
+  //     break;
+  //   }
 
-  BF_Block_Destroy(&blockIterate);
+  // }
 
+  // BF_Block_Destroy(&blockIterate);
+
+  // free(record);
+  // if(foundId)
+  //   return 1;
+  // else
+  //   return 0;
   * record=NULL;
-  if(foundId)
-    return 1;
-  else
-    return 0;
+  return 1;
 }
 
