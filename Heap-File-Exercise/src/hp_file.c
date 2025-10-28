@@ -188,15 +188,7 @@ HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header
   out.file_handle = file_handle;
   out.blockOfRecord = 1;
   out.recordNumInBlock = 0;
-  out.hpInfo = (HeapFileHeader*)malloc(sizeof(HeapFileHeader));
-
-  BF_GetBlock(file_handle, 0, headerBlock);
-  void* data = BF_Block_GetData(headerBlock);
-
-  out.hpInfo = data;
-  out.hpInfo->blockCount = header_info->blockCount;
-  out.hpInfo->recordCount = header_info->recordCount;
-  out.hpInfo->totalRecords = header_info->totalRecords;
+  out.hpInfo = header_info;
   
   BF_Block_SetDirty(headerBlock);
   BF_UnpinBlock(headerBlock);
