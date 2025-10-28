@@ -19,7 +19,6 @@ typedef struct HeapFileHeader {
     int blockCount;
     int recordCount;
     int totalRecords;
-    BF_Block* block;
 } HeapFileHeader;
 
 /**
@@ -28,8 +27,9 @@ typedef struct HeapFileHeader {
 typedef struct HeapFileIterator{
     int idToSearch;
     int file_handle;
+    int blockOfRecord;
+    int recordNumInBlock;
     HeapFileHeader* hpInfo;
-    
 } HeapFileIterator;
 
 

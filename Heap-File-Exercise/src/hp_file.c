@@ -109,6 +109,17 @@ int HeapFile_Close(int file_handle, HeapFileHeader *hp_info){
   dummy->recordCount = hp_info->recordCount;
   dummy->totalRecords = hp_info->totalRecords;
 
+  // for (int i = 0; i < dummy->blockCount; ++i) {
+  //   printf("Contents of Block %d\n\t",i);
+  //   BF_GetBlock(file_handle, i, header_block);
+  //   data = BF_Block_GetData(header_block);
+  //   Record* rec= data;
+  //   printRecord(rec[0]);
+  //   printf("\t");
+  //   printRecord(rec[1]);
+  //   BF_UnpinBlock(header_block);
+  // }
+
   // Dirty and unpin the header block
   BF_Block_SetDirty(header_block);
   CALL_BF(BF_UnpinBlock(header_block));
@@ -175,6 +186,8 @@ HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header
   HeapFileIterator out;
   out.idToSearch = id;
   out.file_handle = file_handle;
+  out.blockOfRecord = 1;
+  out.recordNumInBlock = 0;
   out.hpInfo = (HeapFileHeader*)malloc(sizeof(HeapFileHeader));
 
   BF_GetBlock(file_handle, 0, headerBlock);
@@ -197,43 +210,43 @@ int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
   BF_Block* blockIterate;
   BF_Block_Init(&blockIterate);
 
-  // TODO: Figure out how to keep all the records in memory because they cannot be accessed outside the insertRecord.
-
   void* data;
   int foundId = 0;
-  data = BF_Block_GetData(blockIterate);
-  Record* rec = data;
   * record = (Record*)malloc(sizeof(Record));
-  CALL_BF(BF_GetBlock(heap_iterator->file_handle, 1, blockIterate));
-  // for(int i = 1; i < heap_iterator->hpInfo->totalRecords; ++i){
+  * record = NULL;
+  Record* rec;
+  int recordNum = heap_iterator->recordNumInBlock + 1;
+  int j = 0;
 
-  //   CALL_BF(BF_GetBlock(heap_iterator->file_handle, i, blockIterate));
-  //   data = BF_Block_GetData(blockIterate);
-  //   rec = data;
-  //   // *Μάλλον όχι απτό 0 αλλά από την θέση του record στο block.
-  //   // !Πώς είμαι σίγουρος ότι δεν θα επιστρέψει το ίδιο το block (Skip one loop?)
-  //   // TODO τσέκαρε ότι σίγουρα λειτουργεί
-  //   for(int j = 0 ; j < sizeof(rec)/sizeof(rec[0]); j++){
-  //     if (rec[j].id == (**record).id) {
-  //       foundId = 1;
-  //       break;
-  //     } 
-  //   }
+  for(int i = heap_iterator->blockOfRecord; i < heap_iterator->hpInfo->blockCount; ++i){
+    CALL_BF(BF_GetBlock(heap_iterator->file_handle, i, blockIterate));
+    data = BF_Block_GetData(blockIterate);
+    rec = data;
+    
+    for(int j = recordNum ; j < BF_BLOCK_SIZE/sizeof(rec[0]); j++){
+      if (rec[j].id == heap_iterator->idToSearch) {
+        heap_iterator->blockOfRecord = i;
+        heap_iterator->recordNumInBlock = j;
+        * record = &rec[j];
+        foundId = 1;
+        break;
+      } 
+    }
+    
+    recordNum = 0;
 
-  //   if (foundId) {
-      
-  //     break;
-  //   }
+    if (foundId)
+      break;
 
-  // }
+    CALL_BF(BF_UnpinBlock(blockIterate));
+  }
 
-  // BF_Block_Destroy(&blockIterate);
+  BF_Block_Destroy(&blockIterate);
 
-  // if(foundId)
-  //   return 1;
-  // else
-  //   return 0;
-  * record=NULL;
+  if(foundId)
+    return 1;
+  else
+    return 0;
   return 1;
 }
 
