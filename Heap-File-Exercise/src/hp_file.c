@@ -180,53 +180,60 @@ int HeapFile_InsertRecord(int file_handle, HeapFileHeader *hp_info, const Record
 
 HeapFileIterator HeapFile_CreateIterator(int file_handle, HeapFileHeader* header_info, int id)  {
 
-  BF_Block *headerBlock;
-  BF_Block_Init(&headerBlock);
-
+  // Initializing all the values of the HeapFileIterator
   HeapFileIterator out;
   out.idToSearch = id;
   out.file_handle = file_handle;
   out.blockOfRecord = 1;
   out.recordNumInBlock = 0;
-  out.hpInfo = header_info;
-  
-  BF_Block_SetDirty(headerBlock);
-  BF_UnpinBlock(headerBlock);
-  BF_Block_Destroy(&headerBlock);
 
   return out;
 }
 
 
 int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
+
+  // Initializing the blocks
   BF_Block* blockIterate;
   BF_Block_Init(&blockIterate);
 
-  void* data;
-  int foundId = 0;
+  void* data; // Data of the blocks
+  int foundId = 0; // Boolean in case a record is found
+
+  // The record in which the record will be saved (NULL in case none is found) and the traverser
   * record = NULL;
   Record* rec;
+
+  // Starting at the next record from the previous one and getting the total blocks of the heapFile
   int recordNum = heap_iterator->recordNumInBlock + 1;
   int blocks = 0;
   BF_GetBlockCounter(heap_iterator->file_handle, &blocks);
 
+  // From the last block found (or 1 in the first case) until the end of the blocks or when a record is found
   for(int i = heap_iterator->blockOfRecord; i < blocks; ++i){
+
+    // Getting the block's data and assigning them to a Record
     CALL_BF(BF_GetBlock(heap_iterator->file_handle, i, blockIterate));
     data = BF_Block_GetData(blockIterate);
     rec = data;
     
+    // For each record in the block (from recordNum in case we are inside a block where the id was found to avoid infinite appearances)
     for(int j = recordNum ; j < BF_BLOCK_SIZE/sizeof(Record); j++){
+
+      // If the ids match
       if (rec[j].id == heap_iterator->idToSearch) {
-        heap_iterator->blockOfRecord = i;
-        heap_iterator->recordNumInBlock = j;
-        * record = &rec[j];
+        heap_iterator->blockOfRecord = i;     // Change to the new block
+        heap_iterator->recordNumInBlock = j;  // Change to the place of the record in the block
+        * record = &rec[j];                   // Assign the values
         foundId = 1;
         break;
       } 
     }
     
+    // Reset the recordNum for the second loop and after
     recordNum = 0;
 
+    // Unpin the block and break if a record was found
     if (foundId) {
       CALL_BF(BF_UnpinBlock(blockIterate));
       break;
@@ -234,6 +241,7 @@ int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
       CALL_BF(BF_UnpinBlock(blockIterate));
   }
 
+  // Destroy the block and return 1 or 0 accordingly
   BF_Block_Destroy(&blockIterate);
 
   if(foundId)

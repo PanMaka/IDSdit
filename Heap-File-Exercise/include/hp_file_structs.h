@@ -29,7 +29,6 @@ typedef struct HeapFileIterator{
     int file_handle;
     int blockOfRecord;
     int recordNumInBlock;
-    HeapFileHeader* hpInfo;
 } HeapFileIterator;
 
 
