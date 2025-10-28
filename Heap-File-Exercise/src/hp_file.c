@@ -212,18 +212,18 @@ int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
 
   void* data;
   int foundId = 0;
-  * record = (Record*)malloc(sizeof(Record));
   * record = NULL;
   Record* rec;
   int recordNum = heap_iterator->recordNumInBlock + 1;
-  int j = 0;
+  int blocks = 0;
+  BF_GetBlockCounter(heap_iterator->file_handle, &blocks);
 
-  for(int i = heap_iterator->blockOfRecord; i < heap_iterator->hpInfo->blockCount; ++i){
+  for(int i = heap_iterator->blockOfRecord; i < blocks; ++i){
     CALL_BF(BF_GetBlock(heap_iterator->file_handle, i, blockIterate));
     data = BF_Block_GetData(blockIterate);
     rec = data;
     
-    for(int j = recordNum ; j < BF_BLOCK_SIZE/sizeof(rec[0]); j++){
+    for(int j = recordNum ; j < BF_BLOCK_SIZE/sizeof(Record); j++){
       if (rec[j].id == heap_iterator->idToSearch) {
         heap_iterator->blockOfRecord = i;
         heap_iterator->recordNumInBlock = j;
@@ -235,18 +235,18 @@ int HeapFile_GetNextRecord(HeapFileIterator* heap_iterator, Record** record)  {
     
     recordNum = 0;
 
-    if (foundId)
+    if (foundId) {
+      CALL_BF(BF_UnpinBlock(blockIterate));
       break;
-
-    CALL_BF(BF_UnpinBlock(blockIterate));
+    } else
+      CALL_BF(BF_UnpinBlock(blockIterate));
   }
 
   BF_Block_Destroy(&blockIterate);
 
   if(foundId)
     return 1;
-  else
-    return 0;
-  return 1;
+
+  return 0;
 }
 

@@ -1,0 +1,10 @@
+ Compile hp_main ...
+rm -f ./build/hp_main
+gcc -I ./include/ -L ./lib/ -Wl,-rpath,./lib/ ./examples/hp_main.c ./src/*.c -lbf -o ./build/hp_main -O2
+ Running hp_main ...
+rm -f *.db
+./build/hp_main
+Insert records
+Print records with id=168
+(168,Georgios,Georgiou,Chania)
+(168,Maria,Stamatopoulos,Volos)
